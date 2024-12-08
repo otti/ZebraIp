@@ -182,6 +182,45 @@ class Zebra:
     def AddQrCode(self, x, y, data, Scale=3, ErrCorLev="M"):
         self.AddToBuffer("b%d,%d,%s,%d,%d,%s,%s,%s,\"%s\"\n"%(x, y,"Q", 2, Scale, ErrCorLev, "A", "c", data))
 
+    def AddHorLine(self, x1, y1, length, thickness):
+        self.AddToBuffer("LO%d,%d,%d,%d\n"%(x1,y1, length, thickness))
+
+    def AddVertLine(self, x1, y1, length, thickness):       
+        self.AddToBuffer("LO%d,%d,%d,%d\n"%(x1, y1, thickness, length))
+
+    def AddDiagLine(self, x1, y1, xLen, yLen, thickness):       
+        self.AddToBuffer("LS%d,%d,%d,%d,%d\n"%(x1, y1, thickness, x1+xLen, y1+yLen))
+
+    def AddBox(self, x1, y1, width, hight, thickness):       
+        self.AddToBuffer("X%d,%d,%d,%d,%d\n"%(x1, y1, thickness, x1+width, y1+hight))
+
+    def EnableDhcp(self, DevName):
+        #untested!
+        #Command extracted from Zebra Setup utilities
+        cmd = "\rN\n^XA\n^ND2,A\n^NBC\n^NC1\n^NPP\n^NN%s\n^XZ\n^XA\n^JUS\n^XZ\n"%(DevName)
+        self.SendToPrinter(cmd)
+    
+    def AddCode128(self, x, y, height, data, rot=0, BarWidth=2, PrintText=False):
+        if PrintText:
+            PrintText = "B"
+        else:
+            PrintText = "N"
+        self.AddToBuffer("B%d,%d,%d,%s,%d,%s,%d,%s,\"%s\"\n"%(x, y, rot, "1", BarWidth,5, height, PrintText, data))
+
+    def AddEan13(self, x, y, height, data, rot=0, BarWidth=2, PrintText=False):
+        if len(data)!=12 and len(data)!=13:
+            print("EAN13 has to have exactly 12 or 13 digits")
+            exit(1)
+        
+        if not data.isdigit():
+            print("EAN13 only allows numbers")
+            exit(1)
+
+        if PrintText:
+            PrintText = "B"
+        else:
+            PrintText = "N"
+        self.AddToBuffer("B%d,%d,%d,%s,%d,%s,%d,%s,\"%s\"\n"%(x, y, rot, "E30", BarWidth,5, height, PrintText, data))
 # Main
 # ------------------------------------------------------------------
 
