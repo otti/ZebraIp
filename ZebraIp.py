@@ -44,8 +44,9 @@ class Zebra:
     # all parameters in dots
     def LabelInit(self, height, width, gap):
         cmd = '\nOD\n'                  # Enable Direct Thermal Mode
-        cmd += 'Q%s,%s\n'%(height, gap) # Set label height and gap width
-        cmd += 'q%s\n'%width            # Set laben width
+        cmd += 'Q%s,%s\n'%(int(height), int(gap)) # Set label height and gap width
+        cmd += 'q%s\n'%int(width)            # Set laben width
+        self.dbg_print(cmd)
         self.SendToPrinter(cmd)
 
     # all parameters in mm
