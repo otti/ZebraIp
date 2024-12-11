@@ -10,6 +10,11 @@ Currently supported functions:
 - Print BMP-Files
 - Upload PCX Images to the Printer
 - Print stored PCX images
+- Print Lines
+- Print Boxes
+- Print EAN13 and CODE128
+
+Tested on Windows and Linux
 
 # ZebraIpSimple.py
 Just a minimalistic example to show how easy it is to access the printer via ethernet 

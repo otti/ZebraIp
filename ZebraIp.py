@@ -177,8 +177,12 @@ class Zebra:
             cmd = cmd.encode("latin_1")
         self.BUFFER = self.BUFFER + cmd
     
-    def AddText(self, x, y, text, font=4, rot=0, reverse="N"):
-        self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x,y,rot,font,1,1,reverse,text))
+    def AddText(self, x, y, text, font=4, rot=0, reverse=False):
+        if reverse:
+            reverse = "R"
+        else:
+            reverse = "N"
+        self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x, y, rot, font, 1, 1, reverse, text))
 
     def AddQrCode(self, x, y, data, Scale=3, ErrCorLev="M"):
         self.AddToBuffer("b%d,%d,%s,%d,%d,%s,%s,%s,\"%s\"\n"%(x, y,"Q", 2, Scale, ErrCorLev, "A", "c", data))
@@ -236,9 +240,16 @@ if __name__ == '__main__':
     # use these handy functions ....
     # ------------------------------
     p.ClearBuffer()
-    p.AddBitmap(0,   0,   "Tux.bmp")
-    p.AddText  (0,   130, "FooBar")
-    p.AddQrCode(120, 30,  123456)
+    p.AddBitmap   (0,   0,   "Tux.bmp")
+    p.AddText     (0,   120, "FooBar")
+    p.AddText     (0,   150, "FooBar", reverse=True)
+    p.AddText     (230, 50,  "FooBar", rot=1)
+    p.AddQrCode   (120, 10,  123456)
+    p.AddBox      (120, 100,  50, 40, 2)
+    p.AddDiagLine (120, 100,  50, 40, 2)
+    p.AddDiagLine (170, 100, -50, 40, 2)
+    p.AddHorLine  (120, 120,  50, 2)
+    p.AddVertLine (145, 100,  40, 2)
     p.Print()
 
     # ... or do it like a pro :-)
