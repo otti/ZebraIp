@@ -178,6 +178,26 @@ class Zebra:
         self.BUFFER = self.BUFFER + cmd
     
     def AddText(self, x, y, text, font=4, rot=0, reverse=False):
+
+        if not isinstance(text, str):
+            print("Parameter \"text\" must be of type str")
+
+        y = self.pos_to_dots(y)
+
+        if isinstance(x, str):
+            if x.lower() == "center":
+                font_width = [0, 8, 10, 12, 14, 32] # in px
+                if font>=1 and font<=5:
+                    text_width = len(text) * font_width[font]
+                    x = int((self._label_width/2) - (text_width/2))
+                    if x < 0:
+                        x = 0
+            else:
+                print("Invalid value or type for parameter x. Must be int or \"center\"")
+                exit(1)
+        else:
+            x = self.pos_to_dots(x)
+
         if reverse:
             reverse = "R"
         else:
