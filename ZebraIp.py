@@ -41,11 +41,45 @@ class Zebra:
         elif isinstance(cmd, bytes):
             self.s.sendall(cmd)
 
-    # all parameters in dots
-    def LabelInit(self, height, width, gap):
-        cmd = '\nOD\n'                  # Enable Direct Thermal Mode
-        cmd += 'Q%s,%s\n'%(int(height), int(gap)) # Set label height and gap width
-        cmd += 'q%s\n'%int(width)            # Set laben width
+
+    def LabelInit(self, width, height, gap, x_offset=None, y_offset=None):
+
+        if self._unit != "imperial": # --> is metric
+            height = self.pos_to_dots(height)
+            width  = self.pos_to_dots(width)
+            gap    = self.pos_to_dots(gap)
+
+            if x_offset != None:
+                x_offset = self.pos_to_dots(x_offset)
+            if y_offset != None:
+                y_offset = self.pos_to_dots(y_offset)
+
+        self._label_width  = width
+        self._label_height = height
+        cmd = '\nOD\n'                              # Enable Direct Thermal Mode
+        cmd += 'Q%s,%s\n'%(int(height), int(gap))   # Set label height and gap width
+
+        # Use "q" command and expect the label to be in the center of the print head
+        if x_offset == None and y_offset == None:
+            cmd += 'q%s\n'%int(width)               # Set laben width
+            self.dbg_print('Width:%d Height: %d, Gap: %d\n'%(width, height, gap))
+        else:
+        # Use "R" commmand and adjust teh left and top offset
+            if x_offset == None:
+                print("At least x_offset has to be set")
+                exit(1)
+            if y_offset == None:
+                y_offset = 0
+
+            x_offset = int(((self._print_head_width - self._label_width)/2) + x_offset)
+
+            if x_offset < 0:
+                print("x_offset is outside of printable area")
+                exit(1)                
+
+            cmd += 'R%s,%s\n'%(int(x_offset), int(y_offset)) # Set offset from referenceposition
+            self.dbg_print('Width:%d Height: %d, Gap: %d, X Offset: %d, Y Offset: %d\n'%(width, height, gap, x_offset, y_offset))
+
         self.dbg_print(cmd)
         self.SendToPrinter(cmd)
 
