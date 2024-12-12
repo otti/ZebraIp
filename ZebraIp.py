@@ -2,37 +2,46 @@ import socket
 
 class Zebra:
 
-    DEFAULT_PORT = 9100
-    HOST = ""
-    PORT = DEFAULT_PORT
+    _default_port = 9100
+    _host = ""
+    _port = _default_port
 
-    DEFAULT_DOTS_PER_INCH = 203 # defaut for LP 2824
-    DOTS_PER_INCH = 203
 
-    DOTS_PER_MM = 0
+    _dots_per_inch = 203
+    _dots_per_mm   =  _dots_per_inch/25.4
 
-    BUFFER = b''
+    _print_head_width = 447 # 2.2" * 203 dpi
 
-    DEBUG_EN = False
+    _label_width  = 0 # dots
+    _label_height = 0 # dots
+
+    _buffer = b''
+    _debug_en = False
+    _unit = 'imperial'
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    def __init__(self, host, port=DEFAULT_PORT, dpi=DEFAULT_DOTS_PER_INCH, debug=False):
-        self.HOST = host
-        self.PORT = port
-        self.DOTS_PER_INCH = dpi
-        self.DOTS_PER_MM = dpi/25.4
-        self.DEBUG_EN = debug
+    def __init__(self, host, port=_default_port, unit="imperial", debug=True):
+        self._host     = host
+        self._port     = port
+        self._debug_en = debug
+        self._unit     = unit
         try:
-            self.s.connect((self.HOST, self.PORT))
+            self.s.connect((self._host, self._port))
         except:
             print("Not connected")
 
     def __del__(self):
         self.s.close()
+    
+    def pos_to_dots(self, pos):
+        if self._unit == "imperial":
+            return int(pos)
+        else:
+            return int(float(pos) * (float(self._dots_per_mm)))
 
     def dbg_print(self, text):
-        if self.DEBUG_EN:
+        if self._debug_en:
             print(text)
     
     def SendToPrinter(self, cmd):
@@ -81,15 +90,7 @@ class Zebra:
             self.dbg_print('Width:%d Height: %d, Gap: %d, X Offset: %d, Y Offset: %d\n'%(width, height, gap, x_offset, y_offset))
 
         self.dbg_print(cmd)
-        self.SendToPrinter(cmd)
-
-    # all parameters in mm
-    def LabelInitMetric(self, height, width, gap):
-        height = height * self.DOTS_PER_MM
-        width  = width  * self.DOTS_PER_MM
-        gap    = gap    * self.DOTS_PER_MM
-        self.dbg_print('Height:%d Width: %d, Gap: %d\n'%(height,width,gap))
-        self.LabelInit(height, width, gap)
+        self.SendToPrinter(cmd) 
 
     # Autodetect label and gap length
     def Autosense(self):
@@ -115,12 +116,17 @@ class Zebra:
         assert type(data) == bytes
         assert width % 8 == 0  # make sure width is a multiple of 8
         assert (width//8) * height == len(data)
+        x      = self.pos_to_dots(x)
+        y      = self.pos_to_dots(y)
+        width  = self.pos_to_dots(width)
+        height = self.pos_to_dots(height)
+
         cmd = b"GW%d,%d,%d,%d,%s\n"%(x, y, width//8, height, data)
         self.AddToBuffer(cmd)
     
     # Print the Bitmap as ASCII Art
     def DbgPrintAsciiArt(self, data, width, out_filename):
-        if self.DEBUG_EN:
+        if self._debug_en:
             bmp = ''
             for i in range(0, len(data)):
                 raw = int.from_bytes(data[i:i+1], byteorder='little', signed=False)
@@ -140,6 +146,8 @@ class Zebra:
     # only balck and white image wit windows header are supported yet!
     # Gimp: Image -> Mode -> Indexed; File -> Export as -> MyFilename.bmp
     def AddBitmap(self, x, y, filename):
+        x = self.pos_to_dots(x)
+        y = self.pos_to_dots(y)
         self.dbg_print("PrintBitmap:")
         assert filename.lower().endswith('.bmp')
         data = open(filename,'rb').read()
@@ -203,13 +211,13 @@ class Zebra:
     
     def Print(self, NoOfLabels=1):
         self.AddToBuffer("P%d\n"%(NoOfLabels))
-        self.dbg_print(self.BUFFER)
-        self.SendToPrinter(self.BUFFER)
+        self.dbg_print(self._buffer)
+        self.SendToPrinter(self._buffer)
     
     def AddToBuffer(self, cmd):
         if isinstance(cmd, str) :
             cmd = cmd.encode("latin_1")
-        self.BUFFER = self.BUFFER + cmd
+        self._buffer = self._buffer + cmd
     
     def AddText(self, x, y, text, font=4, rot=0, reverse=False):
 
@@ -236,22 +244,39 @@ class Zebra:
             reverse = "R"
         else:
             reverse = "N"
+
         self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x, y, rot, font, 1, 1, reverse, text))
 
     def AddQrCode(self, x, y, data, Scale=3, ErrCorLev="M"):
+        x = self.pos_to_dots(x)
+        y = self.pos_to_dots(y)
         self.AddToBuffer("b%d,%d,%s,%d,%d,%s,%s,%s,\"%s\"\n"%(x, y,"Q", 2, Scale, ErrCorLev, "A", "c", data))
 
-    def AddHorLine(self, x1, y1, length, thickness):
-        self.AddToBuffer("LO%d,%d,%d,%d\n"%(x1,y1, length, thickness))
+    def AddHorLine(self, x, y, length, thickness):
+        x      = self.pos_to_dots(x)
+        y      = self.pos_to_dots(y)
+        length = self.pos_to_dots(length)
+        self.AddToBuffer("LO%d,%d,%d,%d\n"%(x, y, length, thickness))
 
-    def AddVertLine(self, x1, y1, length, thickness):       
-        self.AddToBuffer("LO%d,%d,%d,%d\n"%(x1, y1, thickness, length))
+    def AddVertLine(self, x, y, length, thickness):
+        x      = self.pos_to_dots(x)
+        y      = self.pos_to_dots(y)
+        length = self.pos_to_dots(length)     
+        self.AddToBuffer("LO%d,%d,%d,%d\n"%(x, y, thickness, length))
 
-    def AddDiagLine(self, x1, y1, xLen, yLen, thickness):       
-        self.AddToBuffer("LS%d,%d,%d,%d,%d\n"%(x1, y1, thickness, x1+xLen, y1+yLen))
+    def AddDiagLine(self, x, y, xLen, yLen, thickness): 
+        x      = self.pos_to_dots(x)
+        y      = self.pos_to_dots(y)
+        xLen = self.pos_to_dots(xLen)
+        yLen = self.pos_to_dots(yLen)
+        self.AddToBuffer("LS%d,%d,%d,%d,%d\n"%(x, y, thickness, x+xLen, y+yLen))
 
-    def AddBox(self, x1, y1, width, hight, thickness):       
-        self.AddToBuffer("X%d,%d,%d,%d,%d\n"%(x1, y1, thickness, x1+width, y1+hight))
+    def AddBox(self, x, y, width, hight, thickness): 
+        x     = self.pos_to_dots(x)
+        y     = self.pos_to_dots(y)
+        width = self.pos_to_dots(width)
+        hight = self.pos_to_dots(hight)      
+        self.AddToBuffer("X%d,%d,%d,%d,%d\n"%(x, y, thickness, x+width, y+hight))
 
     def EnableDhcp(self, DevName):
         #untested!
@@ -260,6 +285,9 @@ class Zebra:
         self.SendToPrinter(cmd)
     
     def AddCode128(self, x, y, height, data, rot=0, BarWidth=2, PrintText=False):
+        x     = self.pos_to_dots(x)
+        y     = self.pos_to_dots(y)
+        hight = self.pos_to_dots(hight)  
         if PrintText:
             PrintText = "B"
         else:
@@ -267,6 +295,9 @@ class Zebra:
         self.AddToBuffer("B%d,%d,%d,%s,%d,%s,%d,%s,\"%s\"\n"%(x, y, rot, "1", BarWidth,5, height, PrintText, data))
 
     def AddEan13(self, x, y, height, data, rot=0, BarWidth=2, PrintText=False):
+        x     = self.pos_to_dots(x)
+        y     = self.pos_to_dots(y)
+        hight = self.pos_to_dots(hight) 
         if len(data)!=12 and len(data)!=13:
             print("EAN13 has to have exactly 12 or 13 digits")
             exit(1)
@@ -288,8 +319,8 @@ if __name__ == '__main__':
     HOST = "zebra.lan"
     PORT = 9100
 
-    p = Zebra(HOST, PORT)
-    p.LabelInitMetric(25, 40, 2) # 25x40 mm wih 2 mm gap
+    p = Zebra(HOST, PORT) # use parameter "unit" to switch to metric
+    p.LabelInit(319, 200, 16) # 25x40 mm wih 2 mm gap
 
     # use these handy functions ....
     # ------------------------------
