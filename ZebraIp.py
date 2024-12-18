@@ -19,6 +19,13 @@ class Zebra:
     _debug_en = False
     _unit = 'imperial'
 
+    _horizontal_multiplier = 1 # one dot space pn left and right of each character
+
+    # width of each character in px. around each charater is a "inter character space" of "_horizontal_multiplier" pixels
+    # font size       1   2   3   4   5   6   7
+    _font_width = [0, 8, 10, 12, 14, 32, 14, 14]
+
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def __init__(self, host, port=_default_port, unit="imperial", debug=True):
@@ -73,7 +80,7 @@ class Zebra:
             cmd += 'q%s\n'%int(width)               # Set laben width
             self.dbg_print('Width:%d Height: %d, Gap: %d\n'%(width, height, gap))
         else:
-        # Use "R" commmand and adjust teh left and top offset
+        # Use "R" commmand and adjust the left and top offset
             if x_offset == None:
                 print("At least x_offset has to be set")
                 exit(1)
@@ -229,27 +236,31 @@ class Zebra:
             print("Parameter \"text\" must be of type str")
 
         y = self.pos_to_dots(y)
+        character_width = self._font_width[font] + 2 * self._horizontal_multiplier
+        text_width = len(text) * character_width
 
         if isinstance(x, str):
             if x.lower() == "center":
-                font_width = [0, 8, 10, 12, 14, 32] # in px
                 if font>=1 and font<=5:
-                    text_width = len(text) * font_width[font]
                     x = int((self._label_width/2) - (text_width/2))
                     if x < 0:
                         x = 0
+            elif x.lower() == "left":
+                x = 0
+            elif x.lower() == "right":
+                x = self._label_width - text_width
             else:
                 print("Invalid value or type for parameter x. Must be int or \"center\"")
                 exit(1)
         else:
             x = self.pos_to_dots(x)
-
+        
         if reverse:
             reverse = "R"
         else:
             reverse = "N"
 
-        self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x, y, rot, font, 1, 1, reverse, text))
+        self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x, y, rot, font, self._horizontal_multiplier, 1, reverse, text))
 
     def AddQrCode(self, x, y, data, Scale=3, ErrCorLev="M"):
         x = self.pos_to_dots(x)
@@ -324,7 +335,7 @@ if __name__ == '__main__':
     PORT = 9100
 
     p = Zebra(HOST, PORT) # use parameter "unit" to switch to metric
-    p.LabelInit(319, 200, 16) # 25x40 mm wih 2 mm gap
+    p.LabelInit(319, 200, 16) # 40x25 mm wih 2 mm gap
 
     # use these handy functions ....
     # ------------------------------
