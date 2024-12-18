@@ -219,7 +219,10 @@ class Zebra:
         if isinstance(cmd, str) :
             cmd = cmd.encode("latin_1")
         self._buffer = self._buffer + cmd
-    
+
+    def GetMaxCharsPerRow(self, font):
+        return int(self._label_width / (self._font_width[font] + 2*self._horizontal_multiplier ))
+        
     def AddText(self, x, y, text, font=4, rot=0, reverse=False):
 
         if not isinstance(text, str):
