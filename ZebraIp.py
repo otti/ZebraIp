@@ -207,6 +207,7 @@ class Zebra:
         self.AddGraphic(x, y, width, height, rev_data)
         
     def ClearBuffer(self):
+        self._buffer = b''
         self.AddToBuffer('\nN\n')
     
     def Print(self, NoOfLabels=1):
