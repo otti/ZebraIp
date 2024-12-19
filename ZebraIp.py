@@ -9,6 +9,7 @@ class Zebra:
 
     _dots_per_inch = 203
     _dots_per_mm   =  _dots_per_inch/25.4
+    _mm_per_dot    =  1/_dots_per_mm
 
     _print_head_width = 447 # 2.2" * 203 dpi
 
@@ -17,7 +18,9 @@ class Zebra:
 
     _buffer = b''
     _debug_en = False
-    _unit = 'imperial'
+    _UseImperial = True
+
+    _y_text_start_pos = 0
 
     _horizontal_multiplier = 1 # one dot space left and right of each character
     _vertical_multiplier   = 1 # one dot space left and right of each character
@@ -33,11 +36,12 @@ class Zebra:
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    def __init__(self, host, port=_default_port, unit="imperial", debug=True):
-        self._host     = host
-        self._port     = port
-        self._debug_en = debug
-        self._unit     = unit
+    def __init__(self, host, port=_default_port, UseImperial=True, debug=True):
+        self._host        = host
+        self._port        = port
+        self._debug_en    = debug
+        self._UseImperial = UseImperial
+
         try:
             self.s.connect((self._host, self._port))
         except:
@@ -47,7 +51,7 @@ class Zebra:
         self.s.close()
     
     def pos_to_dots(self, pos):
-        if self._unit == "imperial":
+        if self._UseImperial:
             return int(pos)
         else:
             return int(float(pos) * (float(self._dots_per_mm)))
@@ -65,15 +69,15 @@ class Zebra:
 
     def LabelInit(self, width, height, gap, x_offset=None, y_offset=None):
 
-        if self._unit != "imperial": # --> is metric
-            height = self.pos_to_dots(height)
-            width  = self.pos_to_dots(width)
-            gap    = self.pos_to_dots(gap)
 
-            if x_offset != None:
-                x_offset = self.pos_to_dots(x_offset)
-            if y_offset != None:
-                y_offset = self.pos_to_dots(y_offset)
+        height = self.pos_to_dots(height)
+        width  = self.pos_to_dots(width)
+        gap    = self.pos_to_dots(gap)
+
+        if x_offset != None:
+            x_offset = self.pos_to_dots(x_offset)
+        if y_offset != None:
+            y_offset = self.pos_to_dots(y_offset)
 
         self._label_width  = width
         self._label_height = height
@@ -130,8 +134,6 @@ class Zebra:
         assert (width//8) * height == len(data)
         x      = self.pos_to_dots(x)
         y      = self.pos_to_dots(y)
-        width  = self.pos_to_dots(width)
-        height = self.pos_to_dots(height)
 
         cmd = b"GW%d,%d,%d,%d,%s\n"%(x, y, width//8, height, data)
         self.AddToBuffer(cmd)
@@ -158,8 +160,6 @@ class Zebra:
     # only balck and white image wit windows header are supported yet!
     # Gimp: Image -> Mode -> Indexed; File -> Export as -> MyFilename.bmp
     def AddBitmap(self, x, y, filename):
-        x = self.pos_to_dots(x)
-        y = self.pos_to_dots(y)
         self.dbg_print("PrintBitmap:")
         assert filename.lower().endswith('.bmp')
         data = open(filename,'rb').read()
@@ -181,7 +181,7 @@ class Zebra:
 
         width = int.from_bytes(data[0x12:0x16], byteorder='little', signed=False)
         height = int.from_bytes(data[0x16:0x1A], byteorder='little', signed=False)
-        self.dbg_print("   HeightxWidth: %dx%d"%(height, width))
+        self.dbg_print("   Height x Width: %dx%d"%(height, width))
 
         if width % 8 != 0 :
             print("Image width must be a multiple of 8")
@@ -194,6 +194,7 @@ class Zebra:
             print("Image must be black and white (1 bit per pixel)")
             return
         
+        # Calc row len including padding bytes
         RowSize = int(((bit_per_pixel * width + 31) / 32)) * 4
         self.dbg_print("   RowSize: " + str(RowSize))
         
@@ -220,6 +221,7 @@ class Zebra:
         
     def ClearBuffer(self):
         self._buffer = b''
+        self._y_text_start_pos = 0
         self.AddToBuffer('\nN\n')
     
     def Print(self, NoOfLabels=1):
@@ -347,7 +349,7 @@ if __name__ == '__main__':
     HOST = "zebra.lan"
     PORT = 9100
 
-    p = Zebra(HOST, PORT) # use parameter "unit" to switch to metric
+    p = Zebra(HOST, PORT) # use parameter "UseImperial=False" to switch to metric
     p.LabelInit(319, 200, 16) # 40x25 mm wih 2 mm gap
 
     # use these handy functions ....
