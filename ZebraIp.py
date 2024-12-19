@@ -19,12 +19,17 @@ class Zebra:
     _debug_en = False
     _unit = 'imperial'
 
-    _horizontal_multiplier = 1 # one dot space pn left and right of each character
+    _horizontal_multiplier = 1 # one dot space left and right of each character
+    _vertical_multiplier   = 1 # one dot space left and right of each character
+
+    class Font:
+        def __init__(self, width, height):
+            self.width  = width
+            self.height =height
 
     # width of each character in px. around each charater is a "inter character space" of "_horizontal_multiplier" pixels
-    # font size       1   2   3   4   5   6   7
-    _font_width = [0, 8, 10, 12, 14, 32, 14, 14]
-
+    # font size              1           2             3             4             5             6             7
+    _font = [Font(0,0), Font(8,12),  Font(10,16),  Font(12,20),  Font(14,24),  Font(32,48),  Font(14,19),  Font(14,19)]
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -228,7 +233,7 @@ class Zebra:
         self._buffer = self._buffer + cmd
 
     def GetMaxCharsPerRow(self, font):
-        return int(self._label_width / (self._font_width[font] + 2*self._horizontal_multiplier ))
+        return int(self._label_width / (self._font[font].width + 2*self._horizontal_multiplier ))
         
     def AddText(self, x, y, text, font=4, rot=0, reverse=False):
 
@@ -236,7 +241,7 @@ class Zebra:
             print("Parameter \"text\" must be of type str")
 
         y = self.pos_to_dots(y)
-        character_width = self._font_width[font] + 2 * self._horizontal_multiplier
+        character_width = self._font[font].width + 2 * self._horizontal_multiplier
         text_width = len(text) * character_width
 
         if isinstance(x, str):
@@ -260,7 +265,15 @@ class Zebra:
         else:
             reverse = "N"
 
-        self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x, y, rot, font, self._horizontal_multiplier, 1, reverse, text))
+        self.AddToBuffer("A%d,%d,%d,%d,%d,%d,%s,\"%s\"\n"%(x, y, rot, font, self._horizontal_multiplier, self._vertical_multiplier, reverse, text))
+
+    def AddTextLine(self, text, x=0, font=4, reverse=False, extra_spacing=0):
+        self.AddText(x, self._y_text_start_pos, text, font=font, reverse=reverse)
+        if self._UseImperial:
+            self._y_text_start_pos = self._y_text_start_pos + extra_spacing + self._font[font].height + 2 * self._vertical_multiplier
+        else:
+            self._y_text_start_pos = self._y_text_start_pos + extra_spacing + ((self._font[font].height + 2 * self._vertical_multiplier) * self._mm_per_dot)
+
 
     def AddQrCode(self, x, y, data, Scale=3, ErrCorLev="M"):
         x = self.pos_to_dots(x)
