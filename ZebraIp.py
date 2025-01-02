@@ -236,22 +236,45 @@ class Zebra:
 
     def GetMaxCharsPerRow(self, font):
         return int(self._label_width / (self._font[font].width + 2*self._horizontal_multiplier ))
+    
+    # Get text width in px
+    def GetTextWidth(self, font, text):
+        character_width = self._font[font].width + 2 * self._horizontal_multiplier
+        return int ( character_width * len(text) )
         
-    def AddText(self, x, y, text, font=4, rot=0, reverse=False):
+    def AddText(self, x, y, text, font=4, rot=0, reverse=False, max_width=None):
 
         if not isinstance(text, str):
             print("Parameter \"text\" must be of type str")
+            exit(1)
+
+        if font<1 or font>5:
+            print("Parameter \"font\" must be between 1 and 5")
+            exit(1)
 
         y = self.pos_to_dots(y)
-        character_width = self._font[font].width + 2 * self._horizontal_multiplier
-        text_width = len(text) * character_width
+        max_width = self.pos_to_dots(max_width)
+
+        if max_width != None:
+            # set "font" to the maximum value
+            for font in range(1, 6):
+                text_width = self.GetTextWidth(font, text)
+                if text_width > max_width:
+                    font = font - 1
+                    if font<1:
+                        print("Text does not fit within \"max_width\" px")
+                        exit(1)   
+                    break
+        
+        text_width = self.GetTextWidth(font, text)
+        print("Font size: %i"%font)
+                
 
         if isinstance(x, str):
             if x.lower() == "center":
-                if font>=1 and font<=5:
-                    x = int((self._label_width/2) - (text_width/2))
-                    if x < 0:
-                        x = 0
+                x = int((self._label_width/2) - (text_width/2))
+                if x < 0:
+                    x = 0
             elif x.lower() == "left":
                 x = 0
             elif x.lower() == "right":
