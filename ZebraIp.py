@@ -1,4 +1,5 @@
 import socket
+import math
 
 class Zebra:
 
@@ -29,6 +30,14 @@ class Zebra:
         def __init__(self, width, height):
             self.width  = width
             self.height =height
+
+    class Point(object):
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+
+        def __str__(self):
+            return "Point(x: %s, y:%s)"%(self.x, self.y) 
 
     # width of each character in px. around each charater is a "inter character space" of "_horizontal_multiplier" pixels
     # font size              1           2             3             4             5             6             7
@@ -205,7 +214,7 @@ class Zebra:
         for row in range(0, height):
             start_idx = int(data_offset + row*RowSize)
             end_idx = int(start_idx + (width/8)) 
-            data_raw = data_raw +  data[start_idx:end_idx]
+            data_raw = data_raw + data[start_idx:end_idx]
         
         self.DbgPrintAsciiArt(data_raw, width, filename + "_asciiart_reverse.txt")
 
@@ -330,6 +339,38 @@ class Zebra:
         width = self.pos_to_dots(width)
         hight = self.pos_to_dots(hight)      
         self.AddToBuffer("X%d,%d,%d,%d,%d\n"%(x, y, thickness, x+width, y+hight))
+
+    def AddCircle(self, x, y, d):
+        points = []
+        framebuffer = []
+        max_steps = 360
+
+        d = self.pos_to_dots(d)
+        r = d/2
+
+        for i in range(0, max_steps):
+            px = r + r * math.sin(2 * math.pi * (i/max_steps))
+            py = r + r * math.cos(2 * math.pi * (i/max_steps))
+            p = self.Point(int(round(px, 0)), int(round(py, 0)))
+            points.append(p)
+
+        width = int(d)+1
+        if width % 8 != 0: # width must be a multiple of 8
+            width = int(width + (8-width%8))
+        height = d+1
+        
+        # create empty framebuffer
+        for i in range(0, int(width/8) * (height)):
+            framebuffer.append(0xFF)
+
+        for point in points:
+            bit_to_set = int(point.x + point.y * width + 1)
+            byte_no = int(bit_to_set//8)
+            bit_mask = 1<<int(7-(bit_to_set%8))
+            framebuffer[byte_no] = framebuffer[byte_no] & (~bit_mask)
+
+        self.AddGraphic(x, y, width, height, bytes(framebuffer) )
+
 
     def EnableDhcp(self, DevName):
         #untested!
