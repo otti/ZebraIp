@@ -262,9 +262,9 @@ class Zebra:
             exit(1)
 
         y = self.pos_to_dots(y)
-        max_width = self.pos_to_dots(max_width)
 
         if max_width != None:
+            max_width = self.pos_to_dots(max_width)
             # set "font" to the maximum value
             for font in range(1, 6):
                 text_width = self.GetTextWidth(font, text)
